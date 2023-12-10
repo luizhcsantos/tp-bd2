@@ -9,18 +9,20 @@ import { error } from 'highcharts';
 const apiKey = '05d807c36ff641aeef4758056e5f1def';
 
 const formatarDadosBarra = (dados) => {
-  return dados.map((item) => ({
-    day: item.updated_at,  // <-- ajuste aqui para a chave correta no seu banco de dados
-    temperature: item.temperature,  // <-- ajuste aqui para a chave correta no seu banco de dados
+  return dados.map((item, index) => ({
+    day: item.updated_at.toLowerCase(),
+    temperature: item.temperature,
+    // Adiciona o índice ao final da chave
+    id: `barra-${item.updated_at.toLowerCase()}-${index}`,
   }));
 };
 
 const formatarDadosPizza = (dados) => {
-  return dados.map((item) => ({
-    id: item.updated_at.toLowerCase(),  // <-- ajuste aqui para a chave correta no seu banco de dados
-    label: item.updated_at.toLowerCase(),  // <-- ajuste aqui para a chave correta no seu banco de dados
-    value: item.temperature,  // <-- ajuste aqui para a chave correta no seu banco de dados
-    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+  return dados.map((item, index) => ({
+    id: item.updated_at.toLowerCase(),
+    label: item.updated_at.toLowerCase(),
+    value: item.temperature,
+    color: `hsl(${index * 30}, 70%, 50%)`, // Gera uma cor única baseada no índice
   }));
 };
 
@@ -29,9 +31,9 @@ const formatarDadosLinha = (dados) => {
     {
       id: 'umidade',
       color: 'hsl(116, 70%, 50%)',
-      data: dados.map((item) => ({
-        x: item.updated_at.toLowerCase(),  // <-- ajuste aqui para a chave correta no seu banco de dados
-        y: item.humidity,  // <-- ajuste aqui para a chave correta no seu banco de dados
+      data: dados.map((item, index) => ({
+        x: `${item.updated_at.toLowerCase()}-${index}`,  // Adiciona o índice ao final da chave
+        y: item.humidity,
       })),
     },
   ];
@@ -164,7 +166,7 @@ const ChartCardLine = ({ data }) => (
 const WeatherDashboard = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [pollutionData, setPollutionData] = useState(null);
-  const [chartData, setChartData] = useState([]);
+  const [chartData, setChartDataBar] = useState([]);
   const [chartDataPie, setChartDataPie] = useState([]);
   const [chartDataLine, setChartDataLine] = useState([]);
 
@@ -207,7 +209,7 @@ const WeatherDashboard = () => {
   useEffect(() => {
     fetchData();
 
-    // Nova chamada para obter dados do banco e formatá-los
+    // Chamada para obter dados do banco e formatá-los
     fetch('http://localhost:5000/api/dados_climaticos')
       .then(response => response.json())
       .then(dadosBanco => {
@@ -215,11 +217,8 @@ const WeatherDashboard = () => {
         const dadosFormatadosPizza = formatarDadosPizza(dadosBanco);
         const dadosFormatadosLinha = formatarDadosLinha(dadosBanco);
 
-        // Agora você pode usar esses dadosFormatados nos seus gráficos
-        //console.log('Dados formatados para gráfico de Barra:', dadosFormatadosBarra);
-        //console.log('Dados formatados para gráfico de Pizza:', dadosFormatadosPizza);
-        //console.log('Dados formatados para gráfico de Linha:', dadosFormatadosLinha);
-        setChartData(dadosFormatadosBarra);
+        // colocar dadosFormatados nos gráficos
+        setChartDataBar(dadosFormatadosBarra)
         setChartDataPie(dadosFormatadosPizza);
         setChartDataLine(dadosFormatadosLinha)
       })
