@@ -4,10 +4,38 @@ import { ResponsivePie } from '@nivo/pie';
 import { ResponsiveLine } from '@nivo/line';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import icon from './climatologia.png'
+import { error } from 'highcharts';
 
 const apiKey = '05d807c36ff641aeef4758056e5f1def';
+
+const formatarDadosBarra = (dados) => {
+  return dados.map((item) => ({
+    day: item.updated_at,  // <-- ajuste aqui para a chave correta no seu banco de dados
+    temperature: item.temperature,  // <-- ajuste aqui para a chave correta no seu banco de dados
+  }));
+};
+
+const formatarDadosPizza = (dados) => {
+  return dados.map((item) => ({
+    id: item.updated_at.toLowerCase(),  // <-- ajuste aqui para a chave correta no seu banco de dados
+    label: item.updated_at.toLowerCase(),  // <-- ajuste aqui para a chave correta no seu banco de dados
+    value: item.temperature,  // <-- ajuste aqui para a chave correta no seu banco de dados
+    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+  }));
+};
+
+const formatarDadosLinha = (dados) => {
+  return [
+    {
+      id: 'umidade',
+      color: 'hsl(116, 70%, 50%)',
+      data: dados.map((item) => ({
+        x: item.updated_at.toLowerCase(),  // <-- ajuste aqui para a chave correta no seu banco de dados
+        y: item.humidity,  // <-- ajuste aqui para a chave correta no seu banco de dados
+      })),
+    },
+  ];
+};
 
 const WeatherCard = ({ city, temperature, description, icon }) => (
   <div className="weather-card">
@@ -26,7 +54,7 @@ const ChartCardBar = ({ data, keys, indexBy }) => (
         data={data}
         keys={keys}
         indexBy={indexBy}
-        colors={{ 'scheme': 'paired'}}
+        colors={{ scheme: 'paired' }}
         borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
         margin={{ top: 10, right: 10, bottom: 50, left: 60 }}
         padding={0.3}
@@ -40,7 +68,7 @@ const ChartCardBar = ({ data, keys, indexBy }) => (
 const ChartCardPie = ({ data }) => (
   <div className="chart-card">
     <h2>Temperature Chart - Pie</h2>
-    <div style={{height : '400px'}}>
+    <div style={{ height: '400px' }}>
       <ResponsivePie
         data={data}
         margin={{ top: 20, right: 40, bottom: 40, left: 0 }}
@@ -49,7 +77,7 @@ const ChartCardPie = ({ data }) => (
         cornerRadius={3}
         activeOuterRadiusOffset={8}
         borderWidth={1}
-        colors={{ 'scheme': 'paired'}}
+        colors={{ scheme: 'paired' }}
         borderColor={{ from: "color", modifiers: [["darker", 0.2]] }}
         arcLinkLabelsSkipAngle={10}
         arcLinkLabelsTextColor="#333333"
@@ -65,7 +93,7 @@ const ChartCardPie = ({ data }) => (
 const ChartCardLine = ({ data }) => (
   <div className="chart-card">
     <h2>Humidity Chart - Line</h2>
-    <div style={{height : '200px'}}>
+    <div style={{ height: '200px' }}>
       <ResponsiveLine
         data={data}
         margin={{ top: 50, right: 110, bottom: 50, left: 60 }}
@@ -136,112 +164,69 @@ const ChartCardLine = ({ data }) => (
 const WeatherDashboard = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [pollutionData, setPollutionData] = useState(null);
-  //const [customIcon, setCustomIcon] = useState(null); 
+  const [chartData, setChartData] = useState([]);
+  const [chartDataPie, setChartDataPie] = useState([]);
+  const [chartDataLine, setChartDataLine] = useState([]);
+
 
   const fetchData = async () => {
     try {
       const initialLatLng = [-22.1276, -51.3856];
-      const city = "Presidente Prudente"; 
-      const responseWeather = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`);
+      const city = 'Presidente Prudente';
+      const responseWeather = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
+      );
       if (!responseWeather.ok) {
-        throw new Error(`Erro na requisição do tempo: ${responseWeather.statusText}`);
+        throw new Error(
+          `Erro na requisição do tempo: ${responseWeather.statusText}`
+        );
       }
       const dataWeather = await responseWeather.json();
-      
-      // Verifica se dataWeather é nulo ou indefinido antes de acessar suas propriedades
+
       if (!dataWeather || !dataWeather.main) {
-        console.error('Dados meteorológicos inválidos1:', dataWeather);
+        console.error('Dados meteorológicos inválidos:', dataWeather);
         return;
       }
       setWeatherData(dataWeather);
 
-      const responsePollution = await fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${initialLatLng[0]}&lon=${initialLatLng[1]}&appid=${apiKey}`);
+      const responsePollution = await fetch(
+        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${initialLatLng[0]}&lon=${initialLatLng[1]}&appid=${apiKey}`
+      );
       if (!responsePollution.ok) {
-        throw new Error(`Erro na requisição da poluição: ${responsePollution.statusText}`);
+        throw new Error(
+          `Erro na requisição da poluição: ${responsePollution.statusText}`
+        );
       }
       const dataPollution = await responsePollution.json();
       setPollutionData(dataPollution);
-
-      // Defina o ícone personalizado aqui
-      const customIcon = new L.Icon({
-        iconUrl: icon,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32],
-        popupAnchor: [0, -32],
-      });
-      //setCustomIcon(newCustomIcon);
-      
     } catch (error) {
-      console.error('Erro ao obter dados:', error);
+      console.error('Erro ao obter dados1:', error);
     }
   };
 
-  
   useEffect(() => {
     fetchData();
 
+    // Nova chamada para obter dados do banco e formatá-los
+    fetch('http://localhost:5000/api/dados_climaticos')
+      .then(response => response.json())
+      .then(dadosBanco => {
+        const dadosFormatadosBarra = formatarDadosBarra(dadosBanco);
+        const dadosFormatadosPizza = formatarDadosPizza(dadosBanco);
+        const dadosFormatadosLinha = formatarDadosLinha(dadosBanco);
+
+        // Agora você pode usar esses dadosFormatados nos seus gráficos
+        //console.log('Dados formatados para gráfico de Barra:', dadosFormatadosBarra);
+        //console.log('Dados formatados para gráfico de Pizza:', dadosFormatadosPizza);
+        //console.log('Dados formatados para gráfico de Linha:', dadosFormatadosLinha);
+        setChartData(dadosFormatadosBarra);
+        setChartDataPie(dadosFormatadosPizza);
+        setChartDataLine(dadosFormatadosLinha)
+      })
+      .catch(error => console.error('Erro ao obter dados do banco de dados:', error));
+
+
   }, []);
-
-  const chartData = [
-    { day: 'Monday', temperature: 25 },
-    { day: 'Tuesday', temperature: 28 },
-    { day: 'Wednesday', temperature: 22 },
-    { day: 'Thursday', temperature: 24 },
-    { day: 'Friday', temperature: 26 },
-    { day: 'Saturday', temperature: 30 },
-    { day: 'Sunday', temperature: 28 }
-  ];
-
-  const chartDataPie = [
-    {
-      id: "Segunda",
-      label: "segunda",
-      value: 25,
-      color: "hsl(90, 70%, 50%)"
-    },
-    {
-      id: "Terça",
-      label: "terça",
-      value: 28,
-      color: "hsl(56, 70%, 50%)"
-    },
-    {
-      id: "Quarta",
-      label: "quarta",
-      value: 22,
-      color: "hsl(103, 70%, 50%)"
-    },
-    {
-      id: "Quinta",
-      label: "quinta",
-      value: 20,
-      color: "hsl(186, 70%, 50%)"
-    },
-    {
-      id: "Sexta",
-      label: "sexta",
-      value: 25,
-      color: "hsl(104, 70%, 50%)"
-    }
-  ];
-
-  const chartDataLine = [
-    {
-      "id": "umidade",
-      "color": "hsl(116, 70%, 50%)",
-      "data": [
-        { "x": "segunda", "y": 50 },
-        { "x": "terça", "y": 40 },
-        { "x": "quarta", "y": 41 },
-        { "x": "quinta", "y": 62 },
-        { "x": "sexta", "y": 51 },
-        { "x": "sábado", "y": 40 },
-        { "x": "domingo", "y": 38 }
-      ]
-    }
-  ];
-
-  const chartKeys = ['temperature'];
 
   return (
     <div className="weather-dashboard">
@@ -258,33 +243,27 @@ const WeatherDashboard = () => {
         zoom={13}
         style={{ height: '400px', width: '100%' }}
       >
-      <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        maxZoom={18}
-        attribution='© OpenWeatherMap contributors'
-      />
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={18}
+          attribution='© OpenWeatherMap contributors'
+        />
 
-
-      {weatherData && (
+        {weatherData && (
           <Marker position={[weatherData.coord.lat, weatherData.coord.lon]}>
-            
             <Popup>
               {`${weatherData.name}: ${Math.round(weatherData.main.temp)}°C`}
             </Popup>
-            
           </Marker>
-      )}
-
-        {/* Adicione mais marcadores conforme necessário */}
+        )}
       </MapContainer>
 
       <div className="chart-container">
-        <ChartCardBar data={chartData} keys={chartKeys} indexBy="day" />
+        <ChartCardBar data={chartData} keys={['temperature']} indexBy="day" />
         <ChartCardPie data={chartDataPie} />
         <ChartCardLine data={chartDataLine} />
       </div>
     </div>
-
   );
 };
 
