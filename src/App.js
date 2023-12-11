@@ -8,37 +8,6 @@ import { error } from 'highcharts';
 
 const apiKey = '05d807c36ff641aeef4758056e5f1def';
 
-const formatarDadosBarra = (dados) => {
-  return dados.map((item, index) => ({
-    day: item.updated_at.toLowerCase(),
-    temperature: item.temperature,
-    // Adiciona o índice ao final da chave
-    id: `barra-${item.updated_at.toLowerCase()}-${index}`,
-  }));
-};
-
-const formatarDadosPizza = (dados) => {
-  return dados.map((item, index) => ({
-    id: item.updated_at.toLowerCase(),
-    label: item.updated_at.toLowerCase(),
-    value: item.temperature,
-    color: `hsl(${index * 30}, 70%, 50%)`, // Gera uma cor única baseada no índice
-  }));
-};
-
-const formatarDadosLinha = (dados) => {
-  return [
-    {
-      id: 'umidade',
-      color: 'hsl(116, 70%, 50%)',
-      data: dados.map((item, index) => ({
-        x: `${item.updated_at.toLowerCase()}-${index}`,  // Adiciona o índice ao final da chave
-        y: item.humidity,
-      })),
-    },
-  ];
-};
-
 const WeatherCard = ({ city, temperature, description, icon }) => (
   <div className="weather-card">
     <h2>{city}</h2>
@@ -50,7 +19,7 @@ const WeatherCard = ({ city, temperature, description, icon }) => (
 
 const ChartCardBar = ({ data, keys, indexBy }) => (
   <div className="chart-card">
-    <h2>Temperature Chart - Bar</h2>
+    <h2>Temperatura </h2>
     <div style={{ height: '300px' }}>
       <ResponsiveBar
         data={data}
@@ -69,7 +38,7 @@ const ChartCardBar = ({ data, keys, indexBy }) => (
 
 const ChartCardPie = ({ data }) => (
   <div className="chart-card">
-    <h2>Temperature Chart - Pie</h2>
+    <h2>Concentração de poluentes no ar</h2>
     <div style={{ height: '400px' }}>
       <ResponsivePie
         data={data}
@@ -163,51 +132,99 @@ const ChartCardLine = ({ data }) => (
   </div>
 );
 
+const formatarDadosBarra = (dados) => {
+  return dados.map((item, index) => ({
+    day: item.updated_at.toLowerCase(),
+    temperature: item.temperature,
+    // Adiciona o índice ao final da chave
+    id: `barra-${item.updated_at.toLowerCase()}-${index}`,
+  }));
+};
+
+const formatarDadosPizza = (dados) => {
+  // Verifica se há dados
+  if (!dados || !dados[0] || dados.length === 0) {
+    return [];
+  } 
+  //console.log(dados[0].co_conc); 
+
+  /* const mappedPoluentes = dados.map(item => ({
+    co_conc: item.co_conc,
+    no2_conc: item.no2_conc,
+    o3_conc: item.o3_conc, 
+    so2_conc: item.so2_conc, 
+    pm2_5: item.pm2_5, 
+    pm10_conc: item.pm10_conc, 
+    nh3_conc: item.nh3_conc 
+  }));
+
+  return mappedPoluentes; */
+
+   // Extraia os dados relevantes
+    // Extraia os dados relevantes
+  const poluentes = dados[0];
+
+  // Campos desejados
+  const camposDesejados = ['co_conc', 'no_conc', 'no2_conc', 'o3_conc', 'so2_conc', 'pm2_5_conc', 'pm10_conc', 'nh3_conc'];
+
+  // Formate os dados para o gráfico de pizza
+  const dadosFormatados = camposDesejados
+  .filter((poluente) => poluentes[poluente] !== undefined)  // Filtra os poluentes undefined
+  .map((poluente) => ({
+    id: poluente.replace('_conc', ''),
+    label: poluente.replace('_conc', ' '),
+    value: poluentes[poluente],
+    color: `hsl(${Math.random() * 360}, 70%, 50%)`, // Gere cores aleatórias
+  }));
+
+  console.log('Dados formatados para o gráfico de pizza:', dadosFormatados);
+
+  return dadosFormatados;
+};
+
+const formatarDadosLinha = (dados) => {
+  return [
+    {
+      id: 'umidade',
+      color: 'hsl(116, 70%, 50%)',
+      data: dados.map((item, index) => ({
+        x: `${item.updated_at.toLowerCase()}-${index}`,  // Adiciona o índice ao final da chave
+        y: item.humidity,
+      })),
+    },
+  ];
+};
+
+const consolidarDadosPizza = (dados) => {
+  const mapaDeContagem = new Map();
+
+  // Conta a ocorrência de cada temperatura
+  dados.forEach((item) => {
+    const temperatura = item.temperatura;
+    mapaDeContagem.set(temperatura, (mapaDeContagem.get(temperatura) || 0) + 1);
+  });
+
+  // Cria entradas consolidadas
+  const dadosConsolidados = Array.from(mapaDeContagem.entries()).map(([temperatura, count], index) => ({
+    id: `pizza-${temperatura}`,
+    label: `${temperatura}°C`,
+    value: count,
+    color: `hsl(${index * 30}, 70%, 50%)`,
+  }));
+
+  return dadosConsolidados;
+
+};
+
+
+
 const WeatherDashboard = () => {
   const [weatherData, setWeatherData] = useState(null);
-  const [pollutionData, setPollutionData] = useState(null);
   const [chartData, setChartDataBar] = useState([]);
   const [chartDataPie, setChartDataPie] = useState([]);
   const [chartDataLine, setChartDataLine] = useState([]);
 
-
-  const fetchData = async () => {
-    try {
-      const initialLatLng = [-22.1276, -51.3856];
-      const city = 'Presidente Prudente';
-      const responseWeather = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`
-      );
-      if (!responseWeather.ok) {
-        throw new Error(
-          `Erro na requisição do tempo: ${responseWeather.statusText}`
-        );
-      }
-      const dataWeather = await responseWeather.json();
-
-      if (!dataWeather || !dataWeather.main) {
-        console.error('Dados meteorológicos inválidos:', dataWeather);
-        return;
-      }
-      setWeatherData(dataWeather);
-
-      const responsePollution = await fetch(
-        `https://api.openweathermap.org/data/2.5/air_pollution?lat=${initialLatLng[0]}&lon=${initialLatLng[1]}&appid=${apiKey}`
-      );
-      if (!responsePollution.ok) {
-        throw new Error(
-          `Erro na requisição da poluição: ${responsePollution.statusText}`
-        );
-      }
-      const dataPollution = await responsePollution.json();
-      setPollutionData(dataPollution);
-    } catch (error) {
-      console.error('Erro ao obter dados1:', error);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
 
     // Chamada para obter dados do banco e formatá-los
     fetch('http://localhost:5000/api/dados_climaticos')
@@ -226,6 +243,7 @@ const WeatherDashboard = () => {
 
 
   }, []);
+
 
   return (
     <div className="weather-dashboard">

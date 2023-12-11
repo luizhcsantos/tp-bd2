@@ -36,6 +36,7 @@ def extract_weather_data(weather_data):
     cidade = weather_data['name']
     pais = weather_data['sys']['country']
     temperatura = weather_data['main']["temp"]
+    print("temperatura: ", temperatura)
     umidade = weather_data['main']['humidity']
     pressao = weather_data['main']['pressure']
     vel_vento = weather_data['wind']['speed']
@@ -55,7 +56,6 @@ def extract_air_pollution_data(air_pollution_data):
     # print(air_pollution_data['list'][0]['main']['aqi'])
     aqi = temp1['aqi']
     components = air_pollution_data['list'][0]['components']
-    print(components)
     co_conc = components['co']
     no_conc =  components['no']
     no2_conc = components['no2']
@@ -87,7 +87,7 @@ def save_to_database(weather_data, air_pollution_data):
         lat, lng, aqi, co_conc, no_conc, no2_conc, o3_conc, so2_conc, pm2_5_conc, pm10_conc, nh3_conc = extract_air_pollution_data(
             air_pollution_data)
         
-
+        
         # Inserir dados na tabela
         query = """INSERT INTO weather (`city`, `country`, `lat`, `lng`, 
             `aqi`, `co_conc`, `no_conc`, `no2_conc`, `o3_conc`, `so2_conc`, `pm2_5_conc`, `pm10_conc`, `nh3_conc`, 
@@ -124,4 +124,4 @@ if __name__ == "__main__":
             save_to_database(weather_data, air_pollution_data)
 
         print("Dados salvos no banco de dados.")
-        sleep(1800)  # Espera 5 minutos antes de obter os dados novamente
+        sleep(2400)  # Espera X minutos antes de obter os dados novamente
