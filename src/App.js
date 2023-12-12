@@ -4,21 +4,15 @@ import { ResponsivePie } from '@nivo/pie';
 import { ResponsiveLine } from '@nivo/line';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { error } from 'highcharts';
+import './styles.css';
+import WeatherCard from './components/WeatherCard';
+import PressureCard from './components/PressureCard';
+import WindCard from './components/WindCard';
 
 const apiKey = '05d807c36ff641aeef4758056e5f1def';
 
-const WeatherCard = ({ city, temperature, description, icon }) => (
-  <div className="weather-card">
-    <h2>{city}</h2>
-    <p>{temperature}°C</p>
-    <p>{description}</p>
-    <img src={`http://openweathermap.org/img/w/${icon}.png`} alt="Weather Icon" />
-  </div>
-);
-
 const ChartCardBar = ({ data, keys, indexBy }) => (
-  <div className="chart-card">
+  <div className="card chart-card">
     <h2>Temperatura </h2>
     <div style={{ height: '300px' }}>
       <ResponsiveBar
@@ -37,7 +31,7 @@ const ChartCardBar = ({ data, keys, indexBy }) => (
 );
 
 const ChartCardPie = ({ data }) => (
-  <div className="chart-card">
+  <div className="card chart-card">
     <h2>Concentração de poluentes no ar</h2>
     <div style={{ height: '400px' }}>
       <ResponsivePie
@@ -62,8 +56,8 @@ const ChartCardPie = ({ data }) => (
 );
 
 const ChartCardLine = ({ data }) => (
-  <div className="chart-card">
-    <h2>Humidity Chart - Line</h2>
+  <div className="card chart-card">
+    <h2>Umidade do Ar</h2>
     <div style={{ height: '200px' }}>
       <ResponsiveLine
         data={data}
@@ -146,22 +140,8 @@ const formatarDadosPizza = (dados) => {
   if (!dados || !dados[0] || dados.length === 0) {
     return [];
   } 
-  //console.log(dados[0].co_conc); 
 
-  /* const mappedPoluentes = dados.map(item => ({
-    co_conc: item.co_conc,
-    no2_conc: item.no2_conc,
-    o3_conc: item.o3_conc, 
-    so2_conc: item.so2_conc, 
-    pm2_5: item.pm2_5, 
-    pm10_conc: item.pm10_conc, 
-    nh3_conc: item.nh3_conc 
-  }));
-
-  return mappedPoluentes; */
-
-   // Extraia os dados relevantes
-    // Extraia os dados relevantes
+  // Extrair os dados relevantes
   const poluentes = dados[0];
 
   // Campos desejados
@@ -176,9 +156,7 @@ const formatarDadosPizza = (dados) => {
     value: poluentes[poluente],
     color: `hsl(${Math.random() * 360}, 70%, 50%)`, // Gere cores aleatórias
   }));
-
-  console.log('Dados formatados para o gráfico de pizza:', dadosFormatados);
-
+ 
   return dadosFormatados;
 };
 
@@ -216,8 +194,6 @@ const consolidarDadosPizza = (dados) => {
 
 };
 
-
-
 const WeatherDashboard = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [chartData, setChartDataBar] = useState([]);
@@ -235,9 +211,11 @@ const WeatherDashboard = () => {
         const dadosFormatadosLinha = formatarDadosLinha(dadosBanco);
 
         // colocar dadosFormatados nos gráficos
-        setChartDataBar(dadosFormatadosBarra)
+        setChartDataBar(dadosFormatadosBarra);
         setChartDataPie(dadosFormatadosPizza);
-        setChartDataLine(dadosFormatadosLinha)
+        setChartDataLine(dadosFormatadosLinha);
+        console.log(dadosBanco)
+        setWeatherData(dadosBanco[dadosBanco.length - 1]); 
       })
       .catch(error => console.error('Erro ao obter dados do banco de dados:', error));
 
@@ -249,32 +227,39 @@ const WeatherDashboard = () => {
     <div className="weather-dashboard">
       {weatherData && (
         <WeatherCard
-          city={weatherData.name}
-          temperature={Math.round(weatherData.main.temp)}
-          description={weatherData.weather[0].description}
-          icon={weatherData.weather[0].icon}
-        />
+            city={weatherData.city}
+            temperature={Math.round(weatherData.temperature)}
+            description={weatherData.description}
+            aqi={weatherData.aqi}
+            pressure={weatherData.pressure}
+            wind_direction={weatherData.wind_direction}
+            wind_speed={weatherData.wind_speed}
+        >
+        <PressureCard pressure={weatherData.pressure} />
+        <WindCard windDirection={weatherData.wind_direction} windSpeed={weatherData.wind_speed} />
+        </WeatherCard>
       )}
-      <MapContainer
-        center={[-22.1276, -51.3856]}
-        zoom={13}
-        style={{ height: '400px', width: '100%' }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={18}
-          attribution='© OpenWeatherMap contributors'
-        />
+      <div className='map-container-wrapper'>
+        <MapContainer
+          center={[-22.1276, -51.3856]}
+          zoom={13}
+          style={{ height: '400px', width: '100%' }}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={18}
+            attribution='© OpenWeatherMap contributors'
+          />
 
-        {weatherData && (
-          <Marker position={[weatherData.coord.lat, weatherData.coord.lon]}>
-            <Popup>
-              {`${weatherData.name}: ${Math.round(weatherData.main.temp)}°C`}
-            </Popup>
-          </Marker>
-        )}
-      </MapContainer>
-
+          {weatherData && (
+            <Marker position={[weatherData.lat, weatherData.lng]}>
+              <Popup>
+                {`${weatherData.city}: ${Math.round(weatherData.temperature)}°C`}
+              </Popup>
+            </Marker>
+          )}
+        </MapContainer>
+      </div>
       <div className="chart-container">
         <ChartCardBar data={chartData} keys={['temperature']} indexBy="day" />
         <ChartCardPie data={chartDataPie} />
